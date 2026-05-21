@@ -48,12 +48,9 @@ class ExaSimilarTool(Tool):
             # Make API request
             headers = {
                 "x-api-key": api_key,
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                "x-exa-integration": "dify-community-integration",
             }
-            
-            # Print request details for debugging
-            print(f"Request URL: https://api.exa.ai/findSimilar")
-            print(f"Request Payload: {json.dumps(payload)}")
             
             response = requests.post(
                 "https://api.exa.ai/findSimilar",

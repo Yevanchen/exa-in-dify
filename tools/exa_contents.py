@@ -25,21 +25,7 @@ class ExaContentsTool(Tool):
         return instance
     
     def _invoke(self, tool_parameters: dict[str, Any]) -> Generator[ToolInvokeMessage, None, None]:
-        """
-        Execute a request to get content from URLs using the Exa API.
-        
-        Args:
-            tool_parameters: Dictionary containing:
-                - urls: List of URLs to fetch content from (required)
-                - livecrawl: Live crawling strategy (never/fallback/always/auto)
-                - full_page_text: Whether to include full webpage text
-                - ai_page_summary: Whether to include AI-generated summary
-                - number_of_subpages: Number of subpages to include
-                - return_links: Number of links to return
-        
-        Returns:
-            Generator yielding ToolInvokeMessage with content results
-        """
+        """Execute a request to get content from URLs using the Exa API."""
         try:
             # Get API key from runtime credentials
             api_key = self.runtime.credentials["exa_api_key"]
@@ -88,37 +74,47 @@ class ExaContentsTool(Tool):
             print(f"Processed URLs: {urls}")
             
             # Get optional parameters
-            livecrawl_strategy = tool_parameters.get("livecrawl", "auto")  # Default to auto for better results
+            include_highlights = tool_parameters.get("include_highlights", True)
+            highlights_max_characters = tool_parameters.get("highlights_max_characters", None)
             full_page_text = tool_parameters.get("full_page_text", False)
-            ai_page_summary = tool_parameters.get("ai_page_summary", False)
+            max_age_hours = tool_parameters.get("max_age_hours", None)
             number_of_subpages = int(tool_parameters.get("number_of_subpages", 1))
             return_links = int(tool_parameters.get("return_links", 1))
-            
-            # Prepare API request - modify to match exa_search.py header format
+
+            # Backwards compat: map legacy livecrawl → maxAgeHours
+            livecrawl_compat = {
+                "always": 0, "never": -1, "fallback": 24, "auto": 24,
+            }
+            livecrawl = tool_parameters.get("livecrawl", None)
+            if max_age_hours is None and livecrawl:
+                max_age_hours = livecrawl_compat.get(livecrawl)
+
             headers = {
                 "x-api-key": api_key,
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                "x-exa-integration": "dify-community-integration",
             }
-            
-            # New request format
-            payload = {
-                "ids": urls,  # Use ids field instead of urls, ensure it's in list format
-                "livecrawl": livecrawl_strategy
+
+            payload: dict[str, Any] = {
+                "ids": urls,
             }
-            
-            # Print debug information
-            print(f"Request payload: {json.dumps(payload)}")
-            
-            # Add conditional parameters
+
+            if max_age_hours is not None:
+                payload["maxAgeHours"] = max_age_hours
+
+            # Highlights default, text opt-in
+            if include_highlights:
+                if highlights_max_characters:
+                    payload["highlights"] = {"maxCharacters": int(highlights_max_characters)}
+                else:
+                    payload["highlights"] = True
+
             if full_page_text:
                 payload["text"] = True
-                
-            if ai_page_summary:
-                payload["summary"] = True
-                
+
             if number_of_subpages > 0:
                 payload["subpages"] = number_of_subpages
-                
+
             if return_links > 0:
                 payload["extras"] = {"links": return_links}
             

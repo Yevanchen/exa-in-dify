@@ -30,46 +30,53 @@ parameters:
     llm_description: A list of URLs to extract content from, separated by commas.
     form: llm
 
-  - name: livecrawl
-    type: select
+  - name: max_age_hours
+    type: number
     required: false
-    default: 'never'
     label:
-      en_US: Live Crawling
-      zh_Hans: 实时爬取
-      pt_BR: Crawl em Tempo Real
-      ja_JP: リアルタイムクロール
+      en_US: Max Age (Hours)
+      zh_Hans: 最大缓存时间（小时）
+      pt_BR: Idade Máxima (Horas)
+      ja_JP: 最大キャッシュ時間（時間）
     human_description:
-      en_US: Specify the live crawling behavior.
-      zh_Hans: 指定实时爬取行为。
-      pt_BR: Especifique o comportamento de crawl em tempo real.
-      ja_JP: 実時間のクロールの動作を指定します。
-    llm_description: Choose the live crawling strategy for content retrieval.
-    options:
-      - label:
-          en_US: Never
-          zh_Hans: 从不
-          pt_BR: Nunca
-          ja_JP: なし
-        value: 'never'
-      - label:
-          en_US: Fallback
-          zh_Hans: 回退
-          pt_BR: Redundância
-          ja_JP: フォールバック
-        value: 'fallback'
-      - label:
-          en_US: Always
-          zh_Hans: 总是
-          pt_BR: Sempre
-          ja_JP: いつも
-        value: 'always'
-      - label:
-          en_US: Auto
-          zh_Hans: 自动
-          pt_BR: Auto
-          ja_JP: 自動
-        value: 'auto'
+      en_US: Freshness control. 0 = always crawl, -1 = cache only, 24 = cache if less than 24h old.
+      zh_Hans: 新鲜度控制。0 = 总是爬取，-1 = 仅缓存，24 = 如果缓存不到24小时则使用缓存。
+      pt_BR: Controle de frescor. 0 = sempre rastrear, -1 = apenas cache, 24 = cache se menos de 24h.
+      ja_JP: 鮮度制御。0 = 常にクロール、-1 = キャッシュのみ、24 = 24時間以内ならキャッシュ使用。
+    llm_description: Controls content freshness. 0 = always crawl, -1 = cache only, positive number = cache if younger than N hours.
+    form: form
+
+  - name: include_highlights
+    type: boolean
+    required: false
+    default: true
+    label:
+      en_US: Include Highlights
+      zh_Hans: 包含高亮摘要
+      pt_BR: Incluir Destaques
+      ja_JP: ハイライトを含める
+    human_description:
+      en_US: Return query-relevant excerpts from each page. Recommended for most use cases.
+      zh_Hans: 返回每个页面中与查询相关的摘要。适用于大多数场景。
+      pt_BR: Retorna trechos relevantes de cada página. Recomendado para a maioria dos casos.
+      ja_JP: 各ページからクエリに関連する抜粋を返します。ほとんどのケースで推奨。
+    llm_description: Return query-relevant excerpts from each page.
+    form: form
+
+  - name: highlights_max_characters
+    type: number
+    required: false
+    label:
+      en_US: Highlights Max Characters
+      zh_Hans: 高亮最大字符数
+      pt_BR: Máx. Caracteres de Destaques
+      ja_JP: ハイライト最大文字数
+    human_description:
+      en_US: Maximum number of characters per highlight excerpt.
+      zh_Hans: 每段高亮摘要的最大字符数。
+      pt_BR: Número máximo de caracteres por trecho destacado.
+      ja_JP: ハイライト抜粋ごとの最大文字数。
+    llm_description: Maximum number of characters per highlight excerpt.
     form: form
 
   - name: full_page_text
@@ -82,28 +89,11 @@ parameters:
       pt_BR: Texto Completo da Página
       ja_JP: 完全ページテキスト
     human_description:
-      en_US: Return full webpage text for every result, including for subpages.
-      zh_Hans: 返回每个结果的完整网页文本，包括子页面。
-      pt_BR: Retorna o texto completo da página web para cada resultado, incluindo para subpáginas.
-      ja_JP: 各結果の完全なウェブページテキストを返し、サブページも含む。
-    llm_description: Include the full text of each webpage, including subpages.
-    form: form
-
-  - name: ai_page_summary
-    type: boolean
-    required: false
-    default: false
-    label:
-      en_US: AI Page Summary
-      zh_Hans: AI页面摘要
-      pt_BR: Resumo AI da Página
-      ja_JP: AIページ要約
-    human_description:
-      en_US: Return an LLM-generated summary of each webpage.
-      zh_Hans: 返回每个网页的LLM生成的摘要。
-      pt_BR: Retorna um resumo gerado pelo LLM de cada página web.
-      ja_JP: 各ウェブページのLLM生成の要約を返します。
-    llm_description: Generate a summary for each webpage using LLM.
+      en_US: Return full webpage text. Opt-in; uses more tokens.
+      zh_Hans: 返回完整网页文本。选择启用；使用更多 token。
+      pt_BR: Retorna o texto completo da página. Opt-in; usa mais tokens.
+      ja_JP: 完全なウェブページテキストを返します。オプトイン；トークンをより多く使用。
+    llm_description: Return the full page text. Opt-in and uses more tokens than highlights.
     form: form
 
   - name: number_of_subpages

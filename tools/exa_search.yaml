@@ -46,37 +46,37 @@ parameters:
   - name: search_type
     type: select
     required: false
-    default: neural
+    default: auto
     label:
       en_US: Search Type
       zh_Hans: 搜索类型
       pt_BR: Tipo de pesquisa
       ja_JP: 検索タイプ
     human_description:
-      en_US: The type of search to perform - neural (semantic), keyword (traditional), or auto.
-      zh_Hans: 要执行的搜索类型 - 神经（语义），关键词（传统），或自动。
-      pt_BR: O tipo de pesquisa a ser realizada - neural (semântica), por palavra-chave (tradicional), ou auto.
-      ja_JP: 実行する検索のタイプ - ニューラル（意味的），キーワード（従来型），または自動。
-    llm_description: The type of search to perform - neural uses advanced AI for semantic understanding, keyword uses traditional search techniques, and auto dynamically selects the best approach.
+      en_US: The type of search to perform. Auto is recommended for most queries.
+      zh_Hans: 要执行的搜索类型。自动适用于大多数查询。
+      pt_BR: O tipo de pesquisa a ser realizada. Auto é recomendado para a maioria das consultas.
+      ja_JP: 実行する検索のタイプ。ほとんどのクエリには自動が推奨されます。
+    llm_description: The type of search to perform. Auto is recommended for most queries.
     options:
-      - label:
-          en_US: Neural
-          zh_Hans: 神经
-          pt_BR: Neural
-          ja_JP: ニューラル
-        value: neural
-      - label:
-          en_US: Keyword
-          zh_Hans: 关键词
-          pt_BR: Palavra-chave
-          ja_JP: キーワード
-        value: keyword
       - label:
           en_US: Auto
           zh_Hans: 自动
           pt_BR: Auto
           ja_JP: 自動
         value: auto
+      - label:
+          en_US: Fast
+          zh_Hans: 快速
+          pt_BR: Rápido
+          ja_JP: 高速
+        value: fast
+      - label:
+          en_US: Deep
+          zh_Hans: 深度
+          pt_BR: Profundo
+          ja_JP: ディープ
+        value: deep
     form: form
   - name: num_results
     type: number
@@ -156,53 +156,67 @@ parameters:
       ja_JP: この日付以前に公開された結果のみを含める（YYYY-MM-DD形式）。
     llm_description: Only include results published before this date in YYYY-MM-DD format.
     form: llm
-  - name: use_autoprompt
+  - name: max_age_hours
+    type: number
+    required: false
+    label:
+      en_US: Max Age (Hours)
+      zh_Hans: 最大缓存时间（小时）
+      pt_BR: Idade Máxima (Horas)
+      ja_JP: 最大キャッシュ時間（時間）
+    human_description:
+      en_US: Freshness control. 0 = always crawl, -1 = cache only, 24 = cache if less than 24h old.
+      zh_Hans: 新鲜度控制。0 = 总是爬取，-1 = 仅缓存，24 = 如果缓存不到24小时则使用缓存。
+      pt_BR: Controle de frescor. 0 = sempre rastrear, -1 = apenas cache, 24 = cache se menos de 24h.
+      ja_JP: 鮮度制御。0 = 常にクロール、-1 = キャッシュのみ、24 = 24時間以内ならキャッシュ使用。
+    llm_description: Controls content freshness. 0 = always crawl, -1 = cache only, positive number = cache if younger than N hours.
+    form: form
+  - name: include_highlights
     type: boolean
     required: false
     default: true
     label:
-      en_US: Use Autoprompt
-      zh_Hans: 使用自动提示
-      pt_BR: Usar Autoprompt
-      ja_JP: 自動プロンプトを使用
+      en_US: Include Highlights
+      zh_Hans: 包含高亮摘要
+      pt_BR: Incluir Destaques
+      ja_JP: ハイライトを含める
     human_description:
-      en_US: Whether to use Exa's prompt engineering to improve the query.
-      zh_Hans: 是否使用 Exa 的提示工程来改进查询。
-      pt_BR: Se deve usar a engenharia de prompt da Exa para melhorar a consulta.
-      ja_JP: Exaのプロンプトエンジニングを使用してクエリを改善するかどうか。
-    llm_description: Whether to use Exa's prompt engineering to improve the query. When true, Exa will automatically rewrite the query to improve search results.
+      en_US: Return query-relevant excerpts from each result. Recommended for most use cases.
+      zh_Hans: 返回每个结果中与查询相关的摘要。适用于大多数场景。
+      pt_BR: Retorna trechos relevantes de cada resultado. Recomendado para a maioria dos casos.
+      ja_JP: 各結果からクエリに関連する抜粋を返します。ほとんどのケースで推奨。
+    llm_description: Return query-relevant excerpts from each result. Uses fewer tokens than full text and is recommended for most use cases.
     form: form
-  - name: text_contents
+  - name: highlights_max_characters
+    type: number
+    required: false
+    label:
+      en_US: Highlights Max Characters
+      zh_Hans: 高亮最大字符数
+      pt_BR: Máx. Caracteres de Destaques
+      ja_JP: ハイライト最大文字数
+    human_description:
+      en_US: Maximum number of characters per highlight excerpt.
+      zh_Hans: 每段高亮摘要的最大字符数。
+      pt_BR: Número máximo de caracteres por trecho destacado.
+      ja_JP: ハイライト抜粋ごとの最大文字数。
+    llm_description: Maximum number of characters per highlight excerpt.
+    form: form
+  - name: include_text
     type: boolean
     required: false
     default: false
     label:
-      en_US: Include Text Contents
-      zh_Hans: 包含文本内容
-      pt_BR: Incluir conteúdo de texto
-      ja_JP: テキスト内容を含める
+      en_US: Include Full Text
+      zh_Hans: 包含全文
+      pt_BR: Incluir Texto Completo
+      ja_JP: 全文を含める
     human_description:
-      en_US: Whether to include the text contents from each search result.
-      zh_Hans: 是否包含每个搜索结果的文本内容。
-      pt_BR: Se deve incluir o conteúdo de texto de cada resultado da pesquisa.
-      ja_JP: 各検索結果からテキスト内容を含めるかどうか。
-    llm_description: Whether to include the text contents from each search result. When true, the response will include the text content of each webpage.
-    form: form
-  - name: highlight_results
-    type: boolean
-    required: false
-    default: false
-    label:
-      en_US: Highlight Results
-      zh_Hans: 高亮结果
-      pt_BR: Destacar resultados
-      ja_JP: 結果をハイライト
-    human_description:
-      en_US: Whether to highlight relevant text snippets in the search results.
-      zh_Hans: 是否在搜索结果中高亮显示相关文本片段。
-      pt_BR: Se deve destacar trechos de texto relevantes nos resultados da pesquisa.
-      ja_JP: 検索結果内の関連テキスト部分をハイライトするかどうか。
-    llm_description: Whether to highlight relevant text snippets in the search results. When true, relevant sections of text will be highlighted.
+      en_US: Return the full page text for each result. Opt-in; uses more tokens.
+      zh_Hans: 返回每个结果的完整页面文本。选择启用；使用更多 token。
+      pt_BR: Retorna o texto completo da página para cada resultado. Opt-in; usa mais tokens.
+      ja_JP: 各結果の完全なページテキストを返します。オプトイン；より多くのトークンを使用。
+    llm_description: Return the full page text for each result. Opt-in and uses more tokens than highlights.
     form: form
   - name: category
     type: select
@@ -226,6 +240,12 @@ parameters:
           ja_JP: 会社
         value: company
       - label:
+          en_US: People
+          zh_Hans: 人物
+          pt_BR: Pessoas
+          ja_JP: 人物
+        value: people
+      - label:
           en_US: Research Paper
           zh_Hans: 研究论文
           pt_BR: Artigo de Pesquisa
@@ -238,35 +258,11 @@ parameters:
           ja_JP: ニュース
         value: news
       - label:
-          en_US: PDF
-          zh_Hans: PDF
-          pt_BR: PDF
-          ja_JP: PDF
-        value: pdf
-      - label:
-          en_US: GitHub
-          zh_Hans: GitHub
-          pt_BR: GitHub
-          ja_JP: GitHub
-        value: github
-      - label:
-          en_US: Tweet
-          zh_Hans: 推文
-          pt_BR: Tuite
-          ja_JP: ツイート
-        value: tweet
-      - label:
           en_US: Personal Site
           zh_Hans: 个人网站
           pt_BR: Site Pessoal
           ja_JP: 個人サイト
         value: personal site
-      - label:
-          en_US: LinkedIn Profile
-          zh_Hans: LinkedIn 个人主页
-          pt_BR: Perfil do LinkedIn
-          ja_JP: LinkedInプロファイル
-        value: linkedin profile
       - label:
           en_US: Financial Report
           zh_Hans: 财务报告

@@ -9,29 +9,22 @@ from dify_plugin import Tool
 from dify_plugin.entities.tool import ToolInvokeMessage
 
 class ExaSearchTool(Tool):
+    # Backwards-compat mapping: livecrawl → maxAgeHours
+    _LIVECRAWL_TO_MAX_AGE = {
+        "always": 0,
+        "never": -1,
+        "fallback": 24,
+        "preferred": 0,
+        "auto": 24,
+    }
+
+    # Backwards-compat mapping: old search types → new
+    _SEARCH_TYPE_COMPAT = {
+        "neural": "auto",
+        "keyword": "auto",
+    }
+
     def _invoke(self, tool_parameters: dict[str, Any]) -> Generator[ToolInvokeMessage, None, None]:
-        """
-        Execute a search using the Exa Search API.
-        
-        Args:
-            tool_parameters: Dictionary containing:
-                - query: The search query string (required)
-                - search_type: "neural", "keyword", or "auto" (default: neural)
-                - num_results: Maximum number of results to return (default: 10)
-                - include_domains: Comma-separated list of domains to include
-                - exclude_domains: Comma-separated list of domains to exclude
-                - start_published_date: Start date for filtering results (YYYY-MM-DD)
-                - end_published_date: End date for filtering results (YYYY-MM-DD)
-                - use_autoprompt: Whether to use Exa's query enhancement (default: True)
-                - text_contents: Whether to include full text of results (default: False)
-                - highlight_results: Whether to highlight relevant snippets (default: False)
-                - category: Filter results by category
-                - includeText: Text that must be present in results
-                - excludeText: Text that must not be present in results
-        
-        Returns:
-            Generator yielding ToolInvokeMessage with search results (both JSON and text formats)
-        """
         try:
             # Get API key from runtime credentials
             api_key = self.runtime.credentials["exa_api_key"]
@@ -42,18 +35,30 @@ class ExaSearchTool(Tool):
                 raise ValueError("Search query is required")
                 
             # Optional parameters with defaults
-            search_type = tool_parameters.get("search_type", "neural")
+            search_type = tool_parameters.get("search_type", "auto")
+            # Backwards compat: map old search types
+            search_type = self._SEARCH_TYPE_COMPAT.get(search_type, search_type)
+
             num_results = int(tool_parameters.get("num_results", 10))
             include_domains = tool_parameters.get("include_domains", "")
             exclude_domains = tool_parameters.get("exclude_domains", "")
             start_published_date = tool_parameters.get("start_published_date", "")
             end_published_date = tool_parameters.get("end_published_date", "")
-            use_autoprompt = tool_parameters.get("use_autoprompt", True)
-            text_contents = tool_parameters.get("text_contents", True)
-            highlight_results = tool_parameters.get("highlight_results", False)
+            include_highlights = tool_parameters.get("include_highlights", True)
+            highlights_max_characters = tool_parameters.get("highlights_max_characters", None)
+            include_full_text = tool_parameters.get("include_text", False)
+            max_age_hours = tool_parameters.get("max_age_hours", None)
             category = tool_parameters.get("category", None)
-            include_text = tool_parameters.get("includeText", None)
-            exclude_text = tool_parameters.get("excludeText", None)
+            include_text_filter = tool_parameters.get("includeText", None)
+            exclude_text_filter = tool_parameters.get("excludeText", None)
+
+            # Backwards compat: map legacy use_autoprompt
+            use_autoprompt = tool_parameters.get("use_autoprompt", None)
+
+            # Backwards compat: map legacy livecrawl → maxAgeHours
+            livecrawl = tool_parameters.get("livecrawl", None)
+            if max_age_hours is None and livecrawl:
+                max_age_hours = self._LIVECRAWL_TO_MAX_AGE.get(livecrawl)
             
             # Process domain lists
             include_domains_list = [d.strip() for d in include_domains.split(",")] if include_domains else []
@@ -63,37 +68,44 @@ class ExaSearchTool(Tool):
             payload: Dict[str, Any] = {
                 "query": query,
                 "numResults": num_results,
-                "useAutoprompt": use_autoprompt,
                 "type": search_type if search_type != "auto" else None,
                 "includeDomains": include_domains_list if include_domains_list else None,
                 "excludeDomains": exclude_domains_list if exclude_domains_list else None,
                 "startPublishedDate": start_published_date if start_published_date else None,
                 "endPublishedDate": end_published_date if end_published_date else None,
                 "category": category,
-                "includeText": [include_text] if include_text else None,
-                "excludeText": [exclude_text] if exclude_text else None
+                "includeText": [include_text_filter] if include_text_filter else None,
+                "excludeText": [exclude_text_filter] if exclude_text_filter else None,
             }
-            
+
+            if use_autoprompt is not None:
+                payload["useAutoprompt"] = use_autoprompt
+
+            if max_age_hours is not None:
+                payload["maxAgeHours"] = max_age_hours
+
             # Remove None values from payload
             payload = {k: v for k, v in payload.items() if v is not None}
-            
-            # Add contents options if needed
-            contents_options = {}
-            if text_contents:
+
+            # Build contents options — highlights default, text opt-in
+            contents_options: Dict[str, Any] = {}
+            if include_highlights:
+                if highlights_max_characters:
+                    contents_options["highlights"] = {"maxCharacters": int(highlights_max_characters)}
+                else:
+                    contents_options["highlights"] = True
+            if include_full_text:
                 contents_options["text"] = True
-            if highlight_results:
-                contents_options["highlights"] = True
-            
+
             if contents_options:
                 payload["contents"] = contents_options
             
             # Make API request
             headers = {
                 "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                "x-exa-integration": "dify-community-integration",
             }
-            print("Payload being sent to Exa API:")
-            print(json.dumps(payload, indent=2))
             response = requests.post(
                 "https://api.exa.ai/search",
                 json=payload,
