@@ -3,6 +3,7 @@
 **Author:** yevanchen
 **Version:** 0.0.1
 **Type:** tool
+**License:** MIT
 
 
 ### Contact
